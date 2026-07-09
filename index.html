@@ -4870,8 +4870,8 @@ async function sbAuthCall(path, body){
   if(!res.ok) throw new Error(data.error_description || data.msg || data.message || ('HTTP '+res.status));
   return data;
 }
-function sbStoreSession(d){ S.cloud.token=d.access_token||''; S.cloud.refresh=d.refresh_token||''; if(d.user){ S.cloud.uid=d.user.id; S.cloud.email=d.user.email; } save(); }
-async function sbSignUp(email,pw){ const d=await sbAuthCall('signup',{email,password:pw}); if(d.access_token) sbStoreSession(d); return d; }
+function sbStoreSession(d){ S.cloud.token=d.access_token||''; S.cloud.refresh=d.refresh_token||''; if(d.user){ S.cloud.uid=d.user.id; S.cloud.email=d.user.email; const un=d.user.user_metadata&&(d.user.user_metadata.username||d.user.user_metadata.display_name); if(un && !(S.lbName||'').trim()) S.lbName=un; } save(); }
+async function sbSignUp(email,pw,username){ const body={email,password:pw}; const un=(username||'').trim(); if(un) body.data={username:un,display_name:un}; const d=await sbAuthCall('signup',body); if(d.access_token) sbStoreSession(d); return d; }
 async function sbSignIn(email,pw){ const d=await sbAuthCall('token?grant_type=password',{email,password:pw}); sbStoreSession(d); return d; }
 async function sbRefresh(){ try{ const d=await sbAuthCall('token?grant_type=refresh_token',{refresh_token:S.cloud.refresh}); sbStoreSession(d); return true; }catch(e){ return false; } }
 async function sbRecover(email){ return sbAuthCall('recover',{email}); }
@@ -5262,7 +5262,7 @@ async function doAuth(){
   try{
     if(isUp){
       if(v.user){ S.lbName=v.user; save(); }
-      const d=await sbSignUp(v.email, v.pw);
+      const d=await sbSignUp(v.email, v.pw, v.user);
       if(d && d.access_token){ finishAuth('Account created'); return; }
       authUI.mode='verify'; authUI.email=v.email; authUI.resend=v.email; authUI.code=''; authUI.info='Enter the 6-digit code from the email to finish.'; authUI.msgType='ok'; authUI.busy=false; mountAuthForm(); const c=document.getElementById('authCode'); if(c) c.focus(); return;
     }

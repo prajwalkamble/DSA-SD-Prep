@@ -180,6 +180,9 @@ a{color:var(--amber);text-decoration:none}
 .dl-days{font-family:var(--mono);font-size:36px;font-weight:800;color:var(--amber);line-height:1;margin:4px 0}
 .dl-unit{font-size:11px;color:var(--muted)}
 .dl-target{font-family:var(--mono);font-size:10px;color:var(--teal);margin-top:6px}
+.start-box .sb-cta{color:var(--amber);margin:2px 0}
+.start-box .sb-cta svg{width:22px;height:22px}
+.start-box .dl-label{color:var(--amber)}
 
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
@@ -3448,7 +3451,14 @@ function renderAuthBtns(){
   if(db){ db.innerHTML=svg(inN?'logout':'login')+`<span>${inN?'Sign out':'Sign In'}</span>`; db.title=inN?'Sign out':'Sign in'; }
 }
 function authBtnClick(){
-  if((typeof sbSignedIn==='function') && sbSignedIn()){ if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer=null; } sbSignOut(); toast('Signed out','ok'); render(); }
+  if((typeof sbSignedIn==='function') && sbSignedIn()){
+    if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer=null; }
+    sbSignOut();
+    _pendingAct=null; detailPat=null; sdCourse=null; foundTopic=null; aiTopic=null; current='home';
+    const boot=runAuthBoot(['signing out','clearing session','done']);
+    render();                       // build the (signed-out) homepage underneath the loader
+    boot.then(()=>{ hideAuthLoader(); toast('Signed out','ok'); });
+  }
   else { _pendingAct=null; openAuthModal(); }
 }
 let _gated=false;
@@ -3463,13 +3473,13 @@ function openAuthModal(gated){
 }
 function closeAuthModal(){ const m=document.getElementById('authModal'); if(m){ m.classList.remove('open'); m.classList.remove('gate-mode'); } _gated=false; document.body.style.overflow=''; }
 // Post-auth developer boot screen: shows a short terminal-style sequence, then reveals the app.
-function runAuthBoot(){
+function runAuthBoot(seq){
   const loader=document.getElementById('authLoader'), log=document.getElementById('alLog'), fill=document.getElementById('alFill');
   if(!loader||!log) return Promise.resolve();
   loader.classList.remove('fade'); loader.classList.add('show');
   document.body.style.overflow='hidden';
   log.innerHTML=''; if(fill) fill.style.width='0%';
-  const lines=['authenticating','loading profile','syncing progress','ready'];
+  const lines=(seq&&seq.length)?seq:['authenticating','loading profile','syncing progress','ready'];
   return new Promise(resolve=>{
     let i=0;
     (function step(){
@@ -3623,23 +3633,25 @@ function updateStreak(){
    SIDEBAR WIDGETS
    ================================================ */
 function renderSideWidgets(){
-  // countdown
+  const si = (typeof sbSignedIn==='function') && sbSignedIn();
+  // countdown — only when signed in AND a target date is set
   const days = daysToDeadline();
   const cd = document.getElementById('sideCountdown');
-  if(cd) cd.innerHTML = (days===null) ? '' : `
+  if(cd) cd.innerHTML = (si && days!==null) ? `
     <div class="cd-label">Days to ${esc(tgtMonthYear())}</div>
     <div class="cd-num">${days}</div>
-    <div class="cd-sub">${S.goalLabel?esc(S.goalLabel)+' · ':''}${esc(tgtFull())}</div>`;
-  // xp
-  const xpInLevel = S.xp % 100;
+    <div class="cd-sub">${S.goalLabel?esc(S.goalLabel)+' · ':''}${esc(tgtFull())}</div>` : '';
+  // xp / level / streak — zeroed when signed out (progress belongs to an account)
+  const dispXp = si ? (S.xp||0) : 0, dispLvl = si ? (S.level||1) : 1, dispStreak = si ? (S.streak||0) : 0;
+  const xpInLevel = dispXp % 100;
   const xpEl = document.getElementById('xpWidget');
   if(xpEl) xpEl.innerHTML = `
     <div class="xp-row">
-      <span class="xp-label">Level ${S.level}</span>
-      <span class="xp-val">${S.xp} XP</span>
+      <span class="xp-label">Level ${dispLvl}</span>
+      <span class="xp-val">${dispXp} XP</span>
     </div>
     <div class="xp-bar"><div class="xp-fill" style="width:${xpInLevel}%"></div></div>
-    <div class="streak">${S.streak>0?`<span class="streak-fire">🔥</span>${S.streak}-day streak`:''}</div>`;
+    <div class="streak">${dispStreak>0?`<span class="streak-fire">🔥</span>${dispStreak}-day streak`:''}</div>`;
   // persist dot
   const pd = document.getElementById('persistDot');
   if(pd) pd.textContent = Store.ok ? '✓ progress saved' : '⚠ session only';
@@ -3666,14 +3678,17 @@ function render(){
    HOME VIEW
    ================================================ */
 function viewHome(){
-  const learnedN = Object.keys(S.learned).filter(k=>S.learned[k]).length;
+  const si = (typeof sbSignedIn==='function') && sbSignedIn();
   const totalProbs = PATTERNS.reduce((a,p)=>a+p.probs.length,0);
-  const solvedN = Object.keys(S.solved).filter(k=>S.solved[k]).length;
-  const studiedN = S.sdStudied ? Object.keys(S.sdStudied).filter(k=>S.sdStudied[k]).length : 0;
-  const foundN = S.foundDone ? Object.keys(S.foundDone).filter(k=>S.foundDone[k]).length : 0;
-  const aiN = S.aiDone ? Object.keys(S.aiDone).filter(k=>S.aiDone[k]).length : 0;
-  const quizRight = S.quizCorrect || 0;
-  const acc = S.quizSeen ? Math.round(S.quizCorrect/S.quizSeen*100) : 0;
+  const learnedN = si ? Object.keys(S.learned).filter(k=>S.learned[k]).length : 0;
+  const solvedN = si ? Object.keys(S.solved).filter(k=>S.solved[k]).length : 0;
+  const studiedN = si && S.sdStudied ? Object.keys(S.sdStudied).filter(k=>S.sdStudied[k]).length : 0;
+  const foundN = si && S.foundDone ? Object.keys(S.foundDone).filter(k=>S.foundDone[k]).length : 0;
+  const aiN = si && S.aiDone ? Object.keys(S.aiDone).filter(k=>S.aiDone[k]).length : 0;
+  const quizRight = si ? (S.quizCorrect||0) : 0;
+  const acc = si && S.quizSeen ? Math.round(S.quizCorrect/S.quizSeen*100) : 0;
+  const dispXp = si ? (S.xp||0) : 0, dispLvl = si ? (S.level||1) : 1;
+  const earnedN = si ? Object.keys(S.earnedBadges).filter(k=>S.earnedBadges[k]).length : 0;
   const days = daysToDeadline();
   const loop=[['01','See','read it'],['02','Identify','spot structure'],['03','Map','match pattern'],['04','Derive','build it'],['05','Verify','complexity+edges']];
   const loopColors=['#F2B345','#CDB85A','#9BC182','#65C9A2','#3ECFBA'];
@@ -3681,11 +3696,11 @@ function viewHome(){
     <div class="loop-node" style="border-top:2px solid ${loopColors[i]}"><div class="ln-tag" style="color:${loopColors[i]}">${n[0]}</div><div class="ln-name">${n[1]}</div><div class="ln-sub">${n[2]}</div></div>
     ${i<loop.length-1?`<div class="loop-sep">${svg('arrowR')}</div>`:''}`).join('');
   const badgesHtml = BADGES.map(b=>`
-    <div class="badge ${S.earnedBadges[b.id]?'earned':''}">
+    <div class="badge ${si && S.earnedBadges[b.id]?'earned':''}">
       <div class="badge-icon">${b.icon}</div>
       <div class="badge-name">${b.name}</div>
     </div>`).join('');
-  const pp = pathProgress();
+  const pp = si ? pathProgress() : {done:0,total:pathProgress().total,pct:0};
   const csi = currentStageIndex();
   const curStage = PATH_STAGES[csi];
   const pathComplete = pp.done===pp.total;
@@ -3699,20 +3714,25 @@ function viewHome(){
     <div class="hp-pct">${pp.pct}%</div>
   </div>`;
   return `
-  ${streakAtRisk()?`<div class="streak-banner"><span class="sb-fire">🔥</span><span class="sb-tx">Your <b>${S.streak}-day streak</b> is at risk — solve or tick off one problem today to keep it.</span><button class="btn btn-amber btn-sm" data-nav="practice">Practice now</button></div>`:''}
+  ${si && streakAtRisk()?`<div class="streak-banner"><span class="sb-fire">🔥</span><span class="sb-tx">Your <b>${S.streak}-day streak</b> is at risk — solve or tick off one problem today to keep it.</span><button class="btn btn-amber btn-sm" data-nav="practice">Practice now</button></div>`:''}
   <div class="hero">
     <div class="hero-grid">
       <div>
         <div class="hero-tag">Pattern Console · your job search engine</div>
         <h1>Stop guessing.<br>Learn to <span class="hl">recognise the pattern.</span></h1>
-        <p>Almost every DSA problem reduces to one of ~22 patterns. This console trains you to see which one instantly — plus gives you a live code sandbox, AI review, quiz engine${days!==null?`, and a countdown to <b style="color:var(--amber)">${esc(tgtMonthYear())}</b>`:''}.</p>
+        <p>Almost every DSA problem reduces to one of ~22 patterns. This console trains you to see which one instantly — plus gives you a live code sandbox, AI review, quiz engine.</p>
       </div>
-      ${days!==null?`<div class="deadline-box">
+      ${(si && days!==null)?`<div class="deadline-box">
         <div class="dl-label">Days remaining</div>
         <div class="dl-days">${days}</div>
         <div class="dl-unit">until ${esc(tgtFull())}</div>
         ${S.goalLabel?`<div class="dl-target">🎯 ${esc(S.goalLabel)}</div>`:''}
-      </div>`:''}
+      </div>`:`<div class="deadline-box start-box">
+        <div class="dl-label">${si?'Set your target':'Get started'}</div>
+        <div class="sb-cta">${svg('route')}</div>
+        <div class="dl-days" style="font-size:19px;line-height:1.15;margin:2px 0 4px">Start your journey</div>
+        <div class="dl-unit">${si?'Add a goal date in Profile &amp; Sync to see your countdown.':'Sign in to track progress and set a target.'}</div>
+      </div>`}
     </div>
   </div>
 
@@ -3736,8 +3756,8 @@ function viewHome(){
     </div>
     <div class="stat-card">
       <div class="stat-label">XP / Level</div>
-      <div class="stat-val">${S.xp}<small> / L${S.level}</small></div>
-      <div class="stat-bar"><i style="width:${S.xp%100}%"></i></div>
+      <div class="stat-val">${dispXp}<small> / L${dispLvl}</small></div>
+      <div class="stat-bar"><i style="width:${dispXp%100}%"></i></div>
     </div>
   </div>
 
@@ -3760,7 +3780,7 @@ function viewHome(){
 
   <div class="card card-pad">
     <div class="row-sb" style="margin-bottom:14px">
-      <div class="eyebrow">Badges — ${Object.keys(S.earnedBadges).length}/${BADGES.length} earned</div>
+      <div class="eyebrow">Badges — ${earnedN}/${BADGES.length} earned</div>
     </div>
     <div class="badge-shelf">${badgesHtml}</div>
   </div>
@@ -3776,7 +3796,7 @@ function viewHome(){
       <div class="xpb-row"><span class="xpb-act">System design studied</span><span class="xpb-calc">${studiedN} × 20</span><span class="xpb-sub">${studiedN*20}</span></div>
       <div class="xpb-row"><span class="xpb-act">AI lesson studied</span><span class="xpb-calc">${aiN} × 15</span><span class="xpb-sub">${aiN*15}</span></div>
       ${(S.hintPenalty||0)>0?`<div class="xpb-row"><span class="xpb-act" style="color:var(--red)">Hints taken without trying</span><span class="xpb-calc" style="color:var(--red)">penalty</span><span class="xpb-sub" style="color:var(--red)">−${S.hintPenalty}</span></div>`:''}
-      <div class="xpb-row xpb-total"><span class="xpb-act">Total XP</span><span class="xpb-calc"></span><span class="xpb-sub">${S.xp}</span></div>
+      <div class="xpb-row xpb-total"><span class="xpb-act">Total XP</span><span class="xpb-calc"></span><span class="xpb-sub">${dispXp}</span></div>
     </div>
   </div>
 

@@ -4,14 +4,14 @@
 
 **Offline-first study platform that takes you from first principles to interview- and build-ready across three tracks — DSA pattern recognition, system design, and AI engineering — shipped as a single static file with a serverless backend.**
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://prajwalkamble.github.io/pattern-console/)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://prajwalkamble.github.io/DSA-SD-Prep/)
 ![Build](https://img.shields.io/badge/build-none%20(zero%20dependencies)-blue)
 ![Tracks](https://img.shields.io/badge/tracks-DSA%20%C2%B7%20System%20Design%20%C2%B7%20AI-8b7ff0)
 ![Frontend](https://img.shields.io/badge/frontend-HTML%20%7C%20CSS%20%7C%20JS-orange)
 ![Backend](https://img.shields.io/badge/backend-Supabase-3ecf8e)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-[Live demo](https://prajwalkamble.github.io/pattern-console/) · [Architecture](#architecture) · [Engineering decisions](#engineering-decisions) · [Deployment](#deployment)
+[Live demo](https://prajwalkamble.github.io/DSA-SD-Prep/) · [Architecture](#architecture) · [Engineering decisions](#engineering-decisions) · [Deployment](#deployment)
 
 </div>
 

@@ -148,7 +148,7 @@ The in-app text is the map and the theory; the four capstones (tiny GPT, RAG app
 
 No install — it's a hosted web app.
 
-1. Open [`prajwalkamble.github.io/pattern-console`](https://prajwalkamble.github.io/pattern-console/) in any modern browser (desktop or mobile).
+1. Open [`prajwalkamble.github.io/pattern-console`](https://prajwalkamble.github.io/DSA-SD-Prep/) in any modern browser (desktop or mobile).
 2. **Create an account** — username + email + password. If email confirmation is enabled, you'll get a **6-digit code** to enter in the app; otherwise you're signed straight in.
 3. Pick a track — **Learning Path** (DSA), **System Design**, or **AI Engineering** — and work top-to-bottom. Progress saves automatically.
 4. After first sign-in on a device, the course works **offline** and re-syncs on reconnect.

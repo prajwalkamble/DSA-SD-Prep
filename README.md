@@ -1,85 +1,205 @@
-# Pattern Console
+<div align="center">
 
-**A single-file training environment for learning to *recognise* the patterns behind data-structures & algorithms interview problems — not just to solve them.**
+# 🧩 Pattern Console
 
-Most interview prep optimises for the wrong number: problems completed. Pattern Console optimises for the one that actually transfers — how quickly you recognise *which* of the ~22 recurring patterns a new problem reduces to, and why. It packages a structured curriculum, a live code sandbox, spaced review, and deliberate-practice guardrails into one page that runs anywhere, online or off.
+**Offline-first study platform that takes you from first principles to interview- and build-ready across three tracks — DSA pattern recognition, system design, and AI engineering — shipped as a single static file with a serverless backend.**
+
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://prajwalkamble.github.io/pattern-console/)
+![Build](https://img.shields.io/badge/build-none%20(zero%20dependencies)-blue)
+![Tracks](https://img.shields.io/badge/tracks-DSA%20%C2%B7%20System%20Design%20%C2%B7%20AI-8b7ff0)
+![Frontend](https://img.shields.io/badge/frontend-HTML%20%7C%20CSS%20%7C%20JS-orange)
+![Backend](https://img.shields.io/badge/backend-Supabase-3ecf8e)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+[Live demo](https://prajwalkamble.github.io/pattern-console/) · [Architecture](#architecture) · [Engineering decisions](#engineering-decisions) · [Deployment](#deployment)
+
+</div>
 
 ---
 
-## Why it exists
-
-Technical interviews are, in practice, a pattern-recognition test wearing a problem-solving costume. The same two dozen shapes — sliding window, two pointers, monotonic stack, BFS/DFS, binary search on the answer, 1-D and 2-D dynamic programming — reappear behind hundreds of superficially different questions. A candidate who has memorised 300 solutions but can't map an unseen prompt to its underlying pattern will stall. A candidate who recognises the shape in the first two minutes rarely does.
-
-Grinding a random problem list doesn't reliably build that skill. It produces the *feeling* of progress — a rising solved count — without the *transfer*: fluency on problems you haven't seen. The gap is methodological, not motivational. Most people skip the struggle, read the solution too early, never re-derive it cold, and never say out loud *why* the pattern fits.
-
-Pattern Console is built to close that gap — to make the pattern the unit of study and deliberate practice the default path, rather than something you have to remember to do.
-
 ## What it is
 
-A self-contained web app — a single HTML file, no build step, no server required — organised around three jobs:
+Pattern Console is a single **`index.html`** — no framework, no build step — that runs **offline after first sign-in** and syncs to Postgres when online. It began as a trainer for *recognising the ~22 patterns* behind DSA problems and grew into a full self-study platform spanning three tracks, all taught with one method: **deliberate practice with spaced review.**
 
-**Learn.** A pattern catalogue (~22 patterns), a foundations track covering complexity analysis and the core data structures, and dedicated dynamic-programming and system-design modules. A ten-stage guided **Learning Path** sequences all of it from zero to interview-ready, so there is always an obvious next step.
+- **DSA** — pattern recognition (22 patterns), a 25-topic foundations track, and dynamic programming.
+- **System Design** — core building blocks and guided case studies.
+- **AI Engineering** — a **7-phase, 31-lesson** curriculum from the underlying math, through training your own models, to generative and agentic systems in production.
 
-**Practice.** A code console with multi-language templates, syntax highlighting, custom test cases, and a deterministic operation-counter that estimates runtime complexity from an actual run — plus optional in-browser Python execution and optional AI code review. Alongside it: a quiz engine, curated problem sheets, an algorithm visualiser, a daily problem, a spaced-repetition queue, and timed mock-interview sessions.
+Reading, theory, and code live in the app; the heavy hands-on work — the code console's Python, or the AI track's model training — runs in the browser or in Colab/PyTorch, and every AI lesson ends with a concrete build task.
 
-**Track.** Progress that only ever accrues from work actually completed — XP, levels, streaks, and badges derived from real activity, never from busywork. Everything persists locally; an optional cloud layer syncs it across devices; a shared leaderboard shows where you stand.
+> **Live:** <https://prajwalkamble.github.io/pattern-console/>
 
-## How it works
+---
 
-### The method
+## Highlights
 
-The tool encodes one practice loop and nudges you toward it on every problem:
+- 🧩 **Single-file SPA** — HTML + CSS + vanilla JS, zero dependencies, instant cache, no bundler; ~620 KB of app *and* curriculum in one file.
+- 🎓 **Three curricula, one method** — DSA patterns, system design, and a full AI-engineering course (math → deep learning → transformers → GenAI → agents → production), each run through the same struggle-first, spaced-review loop.
+- 📴 **Offline-first sync** — `localStorage` is the source of truth; Postgres is an idempotent sync target with union-merge reconciliation across devices.
+- ⚙️ **In-browser code console** — custom test cases and a deterministic operation-counter that estimates complexity from a real run; optional Python (Pyodide) and optional AI review.
+- 🔐 **Full auth flow** — email + password, username saved to the account, an in-app **6-digit email verification** step, and a developer-style boot screen on sign-in; RLS-scoped, secret-free client.
+- 📊 **Progress that can't be gamed** — XP *derived* from completed work, levels, streaks, 16 badges, an editable goal countdown, and a shared leaderboard.
 
-1. **Struggle first** — 20–30 minutes, no hints, no AI. The friction is where the learning is.
-2. **Editorial as a last resort**, never a first move — and only after a genuine attempt.
-3. **Re-derive from a blank page** 24–48 hours later. If you can't reproduce it cold, you didn't learn it.
-4. **Explain the *why* out loud** — which pattern, and how you'd have spotted it — plus time and space complexity and edge cases, on every problem.
-5. **Review on a schedule.** A spaced-repetition queue resurfaces past problems before you forget them, so retention compounds instead of decaying.
+---
 
-This is deliberate practice applied to algorithms. The point isn't to finish problems; it's to build recognition that survives to the interview.
+## Architecture
 
-### The system
+```
+        Browser (GitHub Pages)                   Managed backend (Supabase)
+  ┌──────────────────────────────┐        ┌─────────────────────────────────────┐
+  │          index.html           │        │  Auth · Postgres · Row-Level Security│
+  │  Home → Auth gate → 3 tracks  │        │                                     │
+  │  (curriculum embedded as data)│ async  │  pc_state              (per-user)    │
+  │                               │ upsert │  pc_leaderboard        (write-own)   │
+  │  localStorage (source of      │───────►│  pc_leaderboard_public (read view)   │
+  │  truth)                       │        │  username → auth user_metadata       │
+  └───────────────┬──────────────┘        │  all RLS-scoped to auth.uid()        │
+                  │ opt-in                 └─────────────────────────────────────┘
+                  ▼
+    Anthropic API (AI code review)  ·  Pyodide CDN (in-browser Python)
+```
 
-- **Single file, zero dependencies by default.** The entire application — logic, styles, and content — ships as one HTML file that runs from disk or any static host. It works fully offline; the only external calls are opt-in (Python runtime, AI review, cloud sync).
-- **Local-first persistence.** All progress lives in the browser, so the tool is usable with no account and no network.
-- **Optional cloud sync.** Signing in mirrors your state to a per-user record and pulls it back on any device — same account, any OS, any network. Access is enforced server-side with row-level security, so each account can only ever read its own data.
-- **Metrics that can't be gamed.** XP is *derived* from completed work rather than stored and incremented, so the numbers can't drift out of sync with what you've actually done.
+**Invariants:** every mutation writes to `localStorage` first; cloud sync is best-effort and idempotent (keyed by user); multi-device sync uses union-merge so progress is never lost (trade-off: deletions don't propagate); XP is *derived* from completed work, never stored; all curriculum is embedded as data, so there is no content backend to operate.
 
-## When — the plan
+---
 
-The curriculum is designed to be *run*, not just browsed, against a target date you set. The app shows a live countdown to that date and builds a week-by-week plan from it. The default arc is nine weeks, ordered easy → hard so each week builds on the last:
+## Engineering decisions
 
-| Week | Focus |
-|:---:|:---|
-| 1 | Foundations · Arrays & Hashing |
-| 2 | Two Pointers · Sliding Window |
-| 3 | Stack · Binary Search |
-| 4 | Linked List · Trees |
-| 5 | Tries · Heaps / Priority Queues |
-| 6 | Backtracking · Graphs |
-| 7 | Advanced Graphs · 1-D Dynamic Programming |
-| 8 | 2-D Dynamic Programming · Greedy · Intervals |
-| 9 | Bit Manipulation · Math · System Design · timed mocks |
+| Decision | Why | Trade-off accepted |
+|----------|-----|--------------------|
+| Single static file, no build | Max reach (shared PCs, low-end phones); instant load; trivial hosting. | Larger single payload; manual code organisation over module tooling. |
+| Curriculum embedded as data | Zero content infrastructure; works fully offline; the whole course is versioned in git. | Content edits require a redeploy — no live CMS. |
+| Local-first state, async sync | Studying must never block on the network. | Eventual consistency; union-merge means deletions don't propagate. |
+| Username in `auth.user_metadata` | One fewer table, trigger, and policy to operate; travels with the account. | Not a queryable column; no DB-level uniqueness. |
+| Publishable key only in client | A public static site cannot safely hold private secrets. | All access enforced server-side via Row-Level Security. |
+| Derived XP, not stored | Metrics can't be gamed or drift from reality. | Recomputed from source on every change. |
+| Home open, resources gated | A public landing page; all progress lives behind an account. | Course content needs sign-in even for a quick look. |
 
-**Daily cadence:** a fixed study block; a few problems run through the loop above; roughly 70% new material and 30% spaced review; one timed mock interview each week to rehearse under pressure. The streak exists to protect the habit — consistency across nine weeks beats intensity in any single session.
+---
 
-## Design principles
+## Tech stack
 
-- **The pattern is the unit, not the problem.** Every feature exists to build recognition and transfer, not to inflate a completion count.
-- **Deliberate practice is the default.** The path of least resistance is the correct study behaviour, not a shortcut around it.
-- **Offline-first, account-optional.** The core experience must work on a plane with no login. The cloud is an enhancement, never a dependency.
-- **Honest metrics.** A number reflects real work or it doesn't appear.
-- **One file.** No build, no framework, no toolchain to rot — it will still open in a browser years from now.
+**Frontend:** HTML5 · CSS3 (responsive, dark/light) · vanilla JS (single file, no build)
+**Visualisation:** hand-rolled SVG/Canvas (algorithm visualiser, 20+ modes; progress charts)
+**Execution:** in-browser JS test runner + deterministic op-counter; optional Pyodide (Python)
+**AI:** optional code review via the Anthropic Messages API
+**Backend:** Supabase — Postgres, Auth (email + password, OTP verification), Row-Level Security
+**Hosting:** GitHub Pages (static) · Supabase (managed backend)
 
-## Scope & non-goals
+The **AI Engineering track** *points to* Colab, PyTorch, and Hugging Face as the learner's hands-on environment — these are referenced by the lessons, not bundled into the app.
 
-This is a focused learning instrument, and it is deliberately **not**:
+**Data model** (all RLS-scoped to `auth.uid() = user_id`): `pc_state` (per-user progress), `pc_leaderboard` (write-own) exposed publicly only through the `pc_leaderboard_public` view — display columns (name + scores), no `user_id`. Usernames are stored in `auth.users.raw_user_meta_data`.
 
-- a competitive-programming trainer — it targets interview patterns, not contest mathematics;
-- an online judge — it runs your own tests and estimates complexity; it is not a verdict server;
-- a content marketplace or a multi-tenant SaaS;
-- a substitute for reading primary sources and doing the reps. It is the scaffolding around that work, not a replacement for it.
+---
 
-## Status
+## Feature reference
 
-In active use as structured preparation toward a software-engineering role. Content and roadmap are stable; the application is maintained as a single file with a regression suite covering the core flows.
+<details>
+<summary><strong>DSA — patterns, foundations & DP</strong></summary>
+
+- **22-pattern catalogue** — each with triggers, complexity, and a "learn it" flow
+- **Foundations** — 25 topics across complexity/recursion, data structures, searching, and sorting, with a from-scratch console button
+- **Dynamic programming** module and a **ten-stage guided Learning Path** from zero to interview-ready
+- Quiz engine, curated problem sheets (Blind 75 / NeetCode 150), streaks, and 16 badges
+</details>
+
+<details>
+<summary><strong>System Design</strong></summary>
+
+- Core building blocks and guided case studies, tracked and XP-scored like the rest
+- Studied topics feed the same progress, streak, and leaderboard systems
+</details>
+
+<details>
+<summary><strong>AI Engineering — 7 phases, 31 lessons</strong></summary>
+
+A structured route, taught in order, each lesson in *what / how / when* form with Python, a hands-on Colab task, and the single best resource:
+
+1. **Foundations** — NumPy & vectorization, linear algebra, gradients & the chain rule, probability & softmax
+2. **Classical ML** — the model/loss/optimizer frame, regression from scratch, overfitting & splits, trees/boosting, clustering & PCA
+3. **Deep Learning** — neurons & MLPs, backpropagation, training dynamics, PyTorch, CNNs & embeddings
+4. **Transformers & LLMs** — tokenization, attention & the transformer block, **build a tiny GPT**, pretraining→SFT→RLHF, running open models
+5. **GenAI Engineering** — grounded prompting, embeddings & vector DBs, **RAG**, LoRA/QLoRA fine-tuning, evaluation
+6. **Agentic AI** — tool use/function calling, ReAct loops & memory, LangGraph & multi-agent, guardrails & MCP
+7. **Production & Integration** — serving/latency/cost, LLMOps & evals-in-CI, and a **Spring Boot + pgvector integration capstone**
+
+The in-app text is the map and the theory; the four capstones (tiny GPT, RAG app, fine-tune, backend integration) are built in Colab/PyTorch and are the intended portfolio output.
+</details>
+
+<details>
+<summary><strong>Practice tools</strong></summary>
+
+- **Code console** — multi-language templates, syntax highlighting, bracket matching, autocomplete, custom test cases, and a deterministic complexity estimator; run history with diffs and editorials
+- **Optional Python** via Pyodide and **optional AI code review** (where an Anthropic endpoint is available)
+- **Algorithm visualiser** (20+ modes), **Problem of the Day**, **spaced-repetition review**, and **timed mock interviews**
+</details>
+
+<details>
+<summary><strong>Platform & auth</strong></summary>
+
+- Email + password accounts with a **username stored on the account**; **in-app 6-digit email verification**; a developer-style boot screen on sign-in
+- Offline-first sync with a live status indicator; JSON backup / restore; shared leaderboard
+- **Editable target date** with a live countdown; auth-gated course with **destination memory** (sign in and land on the page you clicked)
+</details>
+
+---
+
+## Getting started
+
+No install — it's a hosted web app.
+
+1. Open [`prajwalkamble.github.io/pattern-console`](https://prajwalkamble.github.io/pattern-console/) in any modern browser (desktop or mobile).
+2. **Create an account** — username + email + password. If email confirmation is enabled, you'll get a **6-digit code** to enter in the app; otherwise you're signed straight in.
+3. Pick a track — **Learning Path** (DSA), **System Design**, or **AI Engineering** — and work top-to-bottom. Progress saves automatically.
+4. After first sign-in on a device, the course works **offline** and re-syncs on reconnect.
+
+---
+
+## Deployment
+
+**Static site (GitHub Pages)**
+```bash
+git add . && git commit -m "Deploy Pattern Console" && git push origin main
+# GitHub → Settings → Pages → Source: "Deploy from a branch" → main / root
+```
+Serves `index.html`. The embedded Supabase **publishable** key is public by design (RLS-enforced) and safe to commit.
+
+**Backend (Supabase)** — auth, progress sync, and the leaderboard:
+1. Create a project; copy the **Project URL** and **publishable (anon) key** into `index.html`.
+2. Run the setup SQL in the SQL Editor to create the RLS-protected tables and the `pc_leaderboard_public` view.
+3. **Choose an email-verification mode:**
+   - *Frictionless:* **disable "Confirm email"** (Authentication → Sign In / Providers → Email) — sign-up logs users straight in.
+   - *6-digit code:* keep confirmation **on**, configure **custom SMTP** (e.g. Gmail or Brevo), then edit the **Confirm signup** template to include `{{ .Token }}`. (Supabase locks template editing until custom SMTP is set.)
+
+Usernames are written to `auth.users` metadata automatically at sign-up — no extra table required.
+
+---
+
+## Security model
+
+- Passwords hashed by Supabase Auth — never stored in plaintext.
+- Row-Level Security enforces `auth.uid() = user_id` on every table. The leaderboard is read through a view exposing only display columns (name + scores, no `user_id`), and the base table is not publicly readable.
+- The **publishable** key is safe to ship — it grants nothing beyond what RLS permits at the database layer. The **secret** key never touches the client.
+- Usernames live in `auth.users.raw_user_meta_data` (account-scoped), not in a public table.
+- User code runs only in the browser's own sandbox (JS test runner / Pyodide) — no server-side execution and no external account access.
+
+---
+
+## Known limitations
+
+- Account creation and sign-in need **one** online session (Supabase Auth); the course is offline thereafter until you sign out.
+- The **6-digit code** flow requires custom SMTP plus a `{{ .Token }}` email template; without them, either use the default confirmation link or disable confirmation entirely.
+- Multi-device sync uses union-merge, so a reset on one device **won't** clear another.
+- **Python execution** requires loading Pyodide (online), and **AI review** requires a reachable Anthropic endpoint — both fall back to the offline estimator and test runner when unavailable.
+- The **AI Engineering track** teaches concepts, code, and tasks in-app, but the actual model-building runs in Colab/PyTorch — a browser file cannot train models on a GPU.
+- Course resources are gated behind sign-in by design; only the landing page is open.
+
+---
+
+## Disclaimer
+
+Pattern Console is an **educational tool** for interview preparation and self-study. It is not affiliated with LeetCode, NeetCode, Hugging Face, or any other platform; external problems and resources link to their original sources.
+
+---
+
+<div align="center"><sub><em>Designed and built end-to-end — frontend, curriculum, data model, and serverless backend.</em></sub></div>

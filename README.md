@@ -27,7 +27,7 @@ Pattern Console is a single **`index.html`** — no framework, no build step —
 
 Reading, theory, and code live in the app; the heavy hands-on work — the code console's Python, or the AI track's model training — runs in the browser or in Colab/PyTorch, and every AI lesson ends with a concrete build task.
 
-> **Live:** <https://prajwalkamble.github.io/pattern-console/>
+> **Live:** <https://prajwalkamble.github.io/DSA-SD-Prep/>
 
 ---
 
